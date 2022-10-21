@@ -20,7 +20,7 @@ public interface SinglePlayerControllerApi {
             description = "Creating a battle field with random arranged ships"
     )
     @GetMapping("/preparing/random_battlefield")
-    public BattleFieldModel createRandomBattleField();
+    public ResponseEntity<BattleFieldModel> createRandomBattleField();
 
     @Operation(
             summary = "Send a selected point and return an updated battle field",
