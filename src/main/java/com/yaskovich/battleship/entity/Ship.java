@@ -13,5 +13,4 @@ public class Ship {
 
     private Set<Integer> coordinates;
     private Set<Integer> spaceAround;
-    private boolean status;
 }

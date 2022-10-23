@@ -29,6 +29,7 @@ public class SinglePlayerController implements SinglePlayerControllerApi {
 
     @Override
     public ResponseEntity<SinglePlayerGameModel> makeHit(Integer point, SinglePlayerGameModel model) {
-        return new ResponseEntity<>(new SinglePlayerGameModel(), HttpStatus.OK);
+        SinglePlayerGameModel updatedModel = service.makeHit(point, model);
+        return new ResponseEntity<>(updatedModel, HttpStatus.OK);
     }
 }

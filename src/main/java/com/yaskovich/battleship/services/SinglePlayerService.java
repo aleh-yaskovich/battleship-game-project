@@ -2,6 +2,7 @@ package com.yaskovich.battleship.services;
 
 import com.yaskovich.battleship.entity.Ship;
 import com.yaskovich.battleship.models.BattleFieldModel;
+import com.yaskovich.battleship.models.SinglePlayerGameModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,22 @@ public class SinglePlayerService {
         return new BattleFieldModel(ships, battleField);
     }
 
+    public SinglePlayerGameModel makeHit(Integer point, SinglePlayerGameModel model) {
+        if(point < 0 || point > 99) {
+            throw new RuntimeException("The point must be from 0 to 99");
+        }
+        if(model.isBotStatus()) { // if it's the bot's turn
+            if(model.getBotLastHits() != null && !model.getBotLastHits().isEmpty()) {
+
+            } else {
+                makeRandomHit(model);
+            }
+        } else { // if it's the player's turn
+
+        }
+        return model;
+    }
+
     /////////////////////////////////////////////////////////////////////////////////
 
     private boolean checkNewShip(int point, int shipSize, boolean orientation, int[] battleField) {
@@ -62,7 +79,7 @@ public class SinglePlayerService {
             point = point + step;
         }
         LOGGER.debug("The method createNewShip() worked");
-        return new Ship(coordinates, createSpaceAround(coordinates), true);
+        return new Ship(coordinates, createSpaceAround(coordinates));
     }
 
     private Set<Integer> createSpaceAround(Set<Integer> coordinates) {
@@ -89,5 +106,70 @@ public class SinglePlayerService {
             battleField[point] = 2;
         }
         LOGGER.debug("The method addNewShipToBattleField() worked");
+    }
+
+    private SinglePlayerGameModel makeRandomHit(SinglePlayerGameModel model) {
+        BattleFieldModel battleFieldModel = model.getBattleFieldModel();
+        int[] battleField = battleFieldModel.getBattleField();
+        List<Ship> ships = battleFieldModel.getShips();
+
+        Random random = new Random();
+        int randomPoint = random.nextInt(100);
+        boolean checkResult = false;
+
+        while(checkResult) {
+            // bot hit or sank the ship
+            if(battleField[randomPoint] == 1) {
+                updateBattleFieldModelIfBotHitOrSank(ships, randomPoint, battleField, model);
+                checkResult = true;
+            }
+            // bot missed
+            else if(battleField[randomPoint] == 0 || battleField[randomPoint] == 2) {
+                battleField[randomPoint] = 3;
+                model.setBotStatus(false);
+                checkResult = true;
+            }
+            // already shot at this point
+            else {
+                randomPoint = random.nextInt(100);
+            }
+        }
+        battleFieldModel.setBattleField(battleField);
+        battleFieldModel.setShips(ships);
+        model.setBattleFieldModel(battleFieldModel);
+        return model;
+    }
+
+    private void updateBattleFieldModelIfBotHitOrSank(
+            List<Ship> ships, int randomPoint, int[] battleField, SinglePlayerGameModel model) {
+        for(Ship ship : ships) {
+            if(ship.getCoordinates().contains(randomPoint)) {
+                if(isSank(ship.getCoordinates(), battleField)) {
+                    markSankShip(ship, battleField);
+                    ships.remove(ship);
+                } else {
+                    battleField[randomPoint] = 3;
+                    model.getBotLastHits().add(randomPoint);
+                }
+            }
+        }
+    }
+
+    private boolean isSank(Set<Integer> coordinates, int[] battleField) {
+        for(int coordinate : coordinates) {
+            if (battleField[coordinate] != 3) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void  markSankShip(Ship ship, int[] battleField) {
+        for(int coordinate : ship.getCoordinates()) {
+            battleField[coordinate] = 4;
+        }
+        for(int space : ship.getSpaceAround()) {
+            battleField[space] = 5;
+        }
     }
 }

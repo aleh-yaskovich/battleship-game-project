@@ -4,10 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class SinglePlayerGameModel {
-    private BattleFieldModel playerModel;
-    private BattleFieldModel botModel;
+    private BattleFieldModel battleFieldModel;
+    private List<Integer> botLastHits;
+    private boolean botStatus;
 }
