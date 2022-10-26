@@ -58,76 +58,44 @@ public class SinglePlayerService {
         List<Ship> ships = battleFieldModel.getShips();
         int[] battleField = battleFieldModel.getBattleField();
 
-        if(model.isBotStatus()) { // if it's the bot's turn
-            // Бот уже попадал?
-            if(!model.getBotLastHits().isEmpty() && model.getBotLastHits() != null) {
-                // Делаем выстрел рядом
+        if(model.isBotStatus()) { // if it's the bots turn
+            if(model.getBotLastHits() != null && !model.getBotLastHits().isEmpty()) {
                 int nextPoint = getNextPoint(model.getBotLastHits(), battleField);
-                // Попал?
                 if(battleField[nextPoint] == 1) {
-                    // Потопил?
+                    battleField[nextPoint] = 4;
                     if(isSank(nextPoint, ships, battleField)) {
-                        // Отметить потопленный корабль
-                        // Отметить пространство вокругкорабля
-                        // Удалить корабль
                         markSankShip(nextPoint, ships, battleField);
-                        // Очистить model.getBotLastHits()
                         model.setBotLastHits(new ArrayList<>());
                     } else {
-                        // Отметить выстрел
-                        battleField[nextPoint] = 4;
-                        // Добавить выстрел в model.getBotLastHits()
                         model.getBotLastHits().add(nextPoint);
                     }
                 } else {
-                    // Отметить выстрел
                     battleField[nextPoint] = 3;
-                    // Поменять статус
                     model.setBotStatus(false);
                 }
             } else {
-                // Делаем рандомный выстрел
                 int randomPoint = getRandomPoint(battleField);
-                // Попал?
                 if(battleField[randomPoint] == 1) {
-                    // Потопил?
+                    battleField[randomPoint] = 4;
                     if(isSank(randomPoint, ships, battleField)) {
-                        // Отметить потопленный корабль
-                        // Отметить пространство вокругкорабля
-                        // Удалить корабль
                         markSankShip(randomPoint, ships, battleField);
-                        // Очистить model.getBotLastHits()
                         model.setBotLastHits(new ArrayList<>());
                     } else {
-                        // Отметить выстрел
-                        battleField[randomPoint] = 4;
-                        // Добавить выстрел в model.getBotLastHits()
                         model.getBotLastHits().add(randomPoint);
                     }
                 } else {
-                    // Отметить выстрел
                     battleField[randomPoint] = 3;
-                    // Поменять статус
                     model.setBotStatus(false);
                 }
             }
         } else { // if it's the player's turn
-            // Попал?
             if(battleField[point] == 1) {
-                // Потопил?
+                battleField[point] = 4;
                 if(isSank(point, ships, battleField)) {
-                    // Отметить потопленный корабль
-                    // Отметить пространство вокругкорабля
-                    // Удалить корабль
                     markSankShip(point, ships, battleField);
-                } else {
-                    // Отметить выстрел
-                    battleField[point] = 4;
                 }
             } else {
-                // Отметить выстрел
                 battleField[point] = 3;
-                // Поменять статус
                 model.setBotStatus(true);
             }
         }
@@ -135,79 +103,9 @@ public class SinglePlayerService {
         battleFieldModel.setShips(ships);
         battleFieldModel.setBattleField(battleField);
         model.setBattleFieldModel(battleFieldModel);
-
+        LOGGER.debug("The method makeHit() worked");
         return model;
     }
-
-    ////////// Helper Methods for makeHit(...) start //////////
-
-    private boolean isSank(int point, List<Ship> ships, int[] battleField) {
-        Ship ship = new Ship();
-        for(Ship s : ships) {
-            if(s.getCoordinates().contains(point)) {
-                ship = s;
-                break;
-            }
-        }
-        for(int coordinate : ship.getCoordinates()) {
-            if(battleField[coordinate] != 4) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private void markSankShip(int point, List<Ship> ships, int[] battleField) {
-        Ship ship = new Ship();
-        for(Ship s : ships) {
-            if(s.getCoordinates().contains(point)) {
-                ship = s;
-                break;
-            }
-        }
-        for(int coordinate : ship.getCoordinates()) {
-            battleField[coordinate] = 5;
-        }
-        for(int space : ship.getSpaceAround()) {
-            battleField[space] = 6;
-        }
-        ships.remove(ship);
-    }
-
-    private int getNextPoint(List<Integer> botLastHits, int[] battleField) {
-        if(botLastHits.size() == 1) {
-            int nextPoint = botLastHits.get(0);
-            if((nextPoint+1) < 100 && battleField[nextPoint+1] < 3) { return (nextPoint+1); }
-            if((nextPoint+10) < 100 && battleField[nextPoint+10] < 3) { return (nextPoint+10); }
-            if((nextPoint-1) > 0 && battleField[nextPoint-1] < 3) { return (nextPoint-1); }
-            if((nextPoint-10) > 0 && battleField[nextPoint-10] < 3) { return (nextPoint-10); }
-        } else {
-            if(botLastHits.get(0) - botLastHits.get(1) == 1) {
-                return (botLastHits.get(botLastHits.size()-1)-1);
-            }
-            if(botLastHits.get(0) - botLastHits.get(1) == -1) {
-                return (botLastHits.get(botLastHits.size()-1)+1);
-            }
-            if(botLastHits.get(0) - botLastHits.get(1) == 10) {
-                return (botLastHits.get(botLastHits.size()-1)-10);
-            }
-            if(botLastHits.get(0) - botLastHits.get(1) == -10) {
-                return (botLastHits.get(botLastHits.size()-1)+10);
-            }
-        }
-        throw new RuntimeException("Something wrong with next point");
-    }
-
-    private int getRandomPoint(int[] battleField) {
-        Random random = new Random();
-        int randomPoint = random.nextInt(100);
-        while(battleField[randomPoint] > 2) {
-            randomPoint = random.nextInt(100);
-        }
-        return randomPoint;
-    }
-
-    ////////// Helper Methods for makeHit(...) end //////////
 
     ////////// Helper Methods for getRandomArrangedShips() start //////////
 
@@ -264,4 +162,80 @@ public class SinglePlayerService {
     }
 
     ////////// Helper Methods for getRandomArrangedShips() end //////////
+
+    ////////// Helper Methods for makeHit(...) start //////////
+
+    private boolean isSank(int point, List<Ship> ships, int[] battleField) {
+        Ship ship = new Ship();
+        for(Ship s : ships) {
+            if(s.getCoordinates().contains(point)) {
+                ship = s;
+                break;
+            }
+        }
+        LOGGER.debug("The method isSank(): Ship: {}", ship);
+        for(int coordinate : ship.getCoordinates()) {
+            if(battleField[coordinate] != 4) {
+                LOGGER.debug("The method isSank() returned false");
+                return false;
+            }
+        }
+        LOGGER.debug("The method isSank() returned true");
+        return true;
+    }
+
+    private void markSankShip(int point, List<Ship> ships, int[] battleField) {
+        Ship ship = new Ship();
+        for(Ship s : ships) {
+            if(s.getCoordinates().contains(point)) {
+                ship = s;
+                break;
+            }
+        }
+        LOGGER.debug("The method markSankShip(): Ship: {}", ship);
+        for(int coordinate : ship.getCoordinates()) {
+            battleField[coordinate] = 5;
+        }
+        for(int space : ship.getSpaceAround()) {
+            battleField[space] = 6;
+        }
+        ships.remove(ship);
+    }
+
+    private int getNextPoint(List<Integer> botLastHits, int[] battleField) {
+        if(botLastHits.size() == 1) {
+            int nextPoint = botLastHits.get(0);
+            if((nextPoint+1) < 100 && battleField[nextPoint+1] < 3) { return (nextPoint+1); }
+            if((nextPoint+10) < 100 && battleField[nextPoint+10] < 3) { return (nextPoint+10); }
+            if((nextPoint-1) > 0 && battleField[nextPoint-1] < 3) { return (nextPoint-1); }
+            if((nextPoint-10) > 0 && battleField[nextPoint-10] < 3) { return (nextPoint-10); }
+        } else {
+            if(botLastHits.get(0) - botLastHits.get(1) == 1) {
+                return (botLastHits.get(botLastHits.size()-1)-1);
+            }
+            if(botLastHits.get(0) - botLastHits.get(1) == -1) {
+                return (botLastHits.get(botLastHits.size()-1)+1);
+            }
+            if(botLastHits.get(0) - botLastHits.get(1) == 10) {
+                return (botLastHits.get(botLastHits.size()-1)-10);
+            }
+            if(botLastHits.get(0) - botLastHits.get(1) == -10) {
+                return (botLastHits.get(botLastHits.size()-1)+10);
+            }
+        }
+        LOGGER.debug("The method getNextPoint() worked");
+        throw new RuntimeException("Something wrong with next point");
+    }
+
+    private int getRandomPoint(int[] battleField) {
+        Random random = new Random();
+        int randomPoint = random.nextInt(100);
+        while(battleField[randomPoint] > 2) {
+            randomPoint = random.nextInt(100);
+        }
+        LOGGER.debug("The method getRandomPoint() returned " + randomPoint);
+        return randomPoint;
+    }
+
+    ////////// Helper Methods for makeHit(...) end //////////
 }
