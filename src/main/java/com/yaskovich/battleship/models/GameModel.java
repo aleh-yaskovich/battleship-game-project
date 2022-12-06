@@ -5,12 +5,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.UUID;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
-public class SinglePlayerGameModel {
-    private BattleFieldModel battleFieldModel;
+@AllArgsConstructor
+public class GameModel {
+    private UUID gameId;
+    private PlayerModel playerModel;
+    private PlayerModel enemyModel;
     private List<Integer> botLastHits;
-    private boolean botStatus;
 }

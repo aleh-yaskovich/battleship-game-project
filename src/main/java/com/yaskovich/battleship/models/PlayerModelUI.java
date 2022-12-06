@@ -1,16 +1,17 @@
 package com.yaskovich.battleship.models;
 
-import com.yaskovich.battleship.entity.Ship;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.util.UUID;
 
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Data
-public class BattleFieldModel {
-    private List<Ship> ships;
+public class PlayerModelUI {
+    private UUID playerId;
+    private String playerName;
+    private Integer sizeOfShips;
     private int[] battleField;
 }

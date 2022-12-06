@@ -1,25 +1,20 @@
 package com.yaskovich.battleship.controllers.unit;
 
 import com.yaskovich.battleship.api.controllers.SinglePlayerController;
-import com.yaskovich.battleship.entity.Ship;
-import com.yaskovich.battleship.models.BattleFieldModel;
-import com.yaskovich.battleship.models.SinglePlayerGameModel;
-import com.yaskovich.battleship.services.SinglePlayerService;
+import com.yaskovich.battleship.models.GameModelUI;
+import com.yaskovich.battleship.models.PlayerModelUI;
+import com.yaskovich.battleship.models.PreparingModel;
+import com.yaskovich.battleship.services.BattleShipService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(SpringExtension.class)
@@ -29,43 +24,25 @@ class SinglePlayerControllerTest {
     private SinglePlayerController controller;
 
     @Mock
-    private SinglePlayerService service;
+    private BattleShipService service;
 
     @Test
-    void shouldReturnBattleFieldModel() {
-        List<Ship> ships = List.of(new Ship(), new Ship());
-        int[] battleField = new int[100];
-        BattleFieldModel expected = new BattleFieldModel(ships, battleField);
-
-        when(service.getRandomArrangedShips()).thenReturn(expected);
-
-        ResponseEntity<BattleFieldModel> actual = controller.createRandomBattleField();
+    void shouldReturnGameModelUI() {
+        GameModelUI expected =
+                new GameModelUI(UUID.randomUUID(), new PlayerModelUI(), new PlayerModelUI(), UUID.randomUUID());
+        PreparingModel preparingModel = new PreparingModel();
+        when(service.getGameModelUI(preparingModel, true)).thenReturn(expected);
+        GameModelUI actual = controller.getGameModelUI(preparingModel).getBody();
+        verify(service).getGameModelUI(preparingModel, true);
         assertNotNull(actual);
-        assertNotNull(actual.getBody());
-
-        BattleFieldModel actualBattleFieldModel = actual.getBody();
-        assertEquals(expected, actualBattleFieldModel);
+        assertEquals(expected, actual);
     }
 
     @Test
-    void shouldReturnSinglePlayerGameModel() {
-        SinglePlayerGameModel model = new SinglePlayerGameModel();
-        model.setBotLastHits(new ArrayList<>());
-        model.setBotStatus(true);
-        Random random = new Random();
-
-        SinglePlayerGameModel expected = new SinglePlayerGameModel();
-        expected.setBotLastHits(List.of(1,2,3));
-        expected.setBotStatus(true);
-
-        when(service.makeHit(anyInt(), any(SinglePlayerGameModel.class))).thenReturn(expected);
-
-        ResponseEntity<SinglePlayerGameModel> actual =
-                controller.makeHit(random.nextInt(100), model);
-        assertNotNull(actual);
-        assertNotNull(actual.getBody());
-
-        SinglePlayerGameModel actualSinglePlayerGameModel = actual.getBody();
-        assertEquals(expected, actualSinglePlayerGameModel);
+    void shouldDeleteGameModel() {
+        UUID gameModelId = UUID.randomUUID();
+        boolean res = Boolean.TRUE.equals(controller.deleteGameModel(gameModelId).getBody());
+        verify(service).deleteGameModelById(gameModelId);
+        assertTrue(res);
     }
 }

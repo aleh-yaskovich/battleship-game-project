@@ -1,11 +1,13 @@
 package com.yaskovich.battleship.api;
 
-import com.yaskovich.battleship.models.BattleFieldModel;
-import com.yaskovich.battleship.models.SinglePlayerGameModel;
+import com.yaskovich.battleship.models.GameModelUI;
+import com.yaskovich.battleship.models.PreparingModel;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @CrossOrigin
 @RequestMapping("single_player/")
@@ -16,17 +18,16 @@ import org.springframework.web.bind.annotation.*;
 public interface SinglePlayerControllerApi {
 
     @Operation(
-            summary = "Creating a battle field with random arranged ships",
-            description = "Creating a battle field with random arranged ships"
+            summary = "Create or update a GameModelUI",
+            description = "Create a new GameModelUI or update an existing GameModelUI with random arranged ships"
     )
-    @GetMapping("/preparing/random_battlefield")
-    public ResponseEntity<BattleFieldModel> createRandomBattleField();
+    @PostMapping("random_battlefield")
+    ResponseEntity<GameModelUI> getGameModelUI(@RequestBody PreparingModel preparingModel);
 
     @Operation(
-            summary = "Send a selected point and return an updated battle field",
-            description = "Send a selected point and return an updated battle field"
+            summary = "Delete a GameModel",
+            description = "Delete a GameModel by its ID from the List of GameModels"
     )
-    @PostMapping("game/{point}")
-    public ResponseEntity<SinglePlayerGameModel> makeHit(
-            @PathVariable Integer point, @RequestBody SinglePlayerGameModel model);
+    @DeleteMapping("game/{gameModelId}")
+    ResponseEntity<Boolean> deleteGameModel(@PathVariable UUID gameModelId);
 }

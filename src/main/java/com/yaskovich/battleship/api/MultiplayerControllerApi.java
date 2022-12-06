@@ -1,49 +1,44 @@
 package com.yaskovich.battleship.api;
 
-import com.yaskovich.battleship.models.BattleFieldModel;
-import com.yaskovich.battleship.models.MultiplayerGameModel;
+import com.yaskovich.battleship.models.FreeGame;
+import com.yaskovich.battleship.models.GameModelUI;
+import com.yaskovich.battleship.models.PreparingModel;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @CrossOrigin
 @RequestMapping("multiplayer/")
 @Tag(
         name = "Multiplayer controller",
-        description = "Controller for the game with another player"
+        description = "Controller for the game with an another player"
 )
 public interface MultiplayerControllerApi {
 
     @Operation(
-            summary = "Creating a battle field with random arranged ships",
-            description = "Creating a battle field with random arranged ships"
+            summary = "Create or update a GameModelUI",
+            description = "Create a new GameModelUI or update an existing GameModelUI with random arranged ships"
     )
-    @GetMapping("/preparing/random_battlefield")
-    public BattleFieldModel createRandomBattleField();
+    @PostMapping("random_battlefield")
+    ResponseEntity<GameModelUI> getGameModelUI(@RequestBody PreparingModel preparingModel);
 
     @Operation(
-            summary = "Return a waiting list",
-            description = "Return a list with players who are waiting for an opponent"
+            summary = "Get the List of free games",
+            description = "Get the List of games in which another player is not defined"
     )
-    @GetMapping("/preparing/waiting_list")
-    public List<String> getWaitingList();
+    @GetMapping("free_games")
+    ResponseEntity<List<FreeGame>> getFreeGames(@RequestParam UUID withoutId);
 
     @Operation(
-            summary = "Send a selected point and return an updated battle field",
-            description = "Send a selected point and return an updated battle field"
+            summary = "Join an another player to the selected free game",
+            description = "Join an another player to the selected free game " +
+                    "and return the updated GameModelUI to both players"
     )
-    @PostMapping("game/{point}")
-    public ResponseEntity<MultiplayerGameModel> makeHit(
-            @PathVariable Integer point, @RequestBody MultiplayerGameModel model);
-
-    @Operation(
-            summary = "Send a message",
-            description = "Send a message for the opponent"
-    )
-    @PostMapping("game/{playerId}/message")
-    public ResponseEntity<String> sendMessage(
-            @PathVariable Integer playerId, @RequestBody String message);
+    @PostMapping("game/{gameId}/join")
+    ResponseEntity<GameModelUI> joinToMultiplayerGame(
+            @PathVariable UUID gameId, @RequestBody GameModelUI gameModelUI);
 }

@@ -1,7 +1,9 @@
 package com.yaskovich.battleship.controllers.integration;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.yaskovich.battleship.api.controllers.SinglePlayerController;
+import com.yaskovich.battleship.api.controllers.MultiplayerController;
+import com.yaskovich.battleship.models.FreeGame;
 import com.yaskovich.battleship.models.GameModelUI;
 import com.yaskovich.battleship.models.PreparingModel;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,10 +20,11 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -29,18 +32,18 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 @SpringBootTest
 @ExtendWith(SpringExtension.class)
 @AutoConfigureMockMvc
-class SinglePlayerControllerIT {
+class MultiplayerControllerIT {
 
-    public static final String SINGLE_PLAYER_ENDPOINT = "/single_player";
+    public static final String MULTIPLAYER_ENDPOINT = "/multiplayer";
     @Autowired
-    private SinglePlayerController singlePlayerController;
+    private MultiplayerController multiplayerController;
     @Autowired
     protected ObjectMapper objectMapper;
     protected MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        this.mockMvc = standaloneSetup(singlePlayerController)
+        this.mockMvc = standaloneSetup(multiplayerController)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .alwaysDo(MockMvcResultHandlers.print())
                 .build();
@@ -53,8 +56,8 @@ class SinglePlayerControllerIT {
         PreparingModel preparingModel = new PreparingModel(null, expectedName);
         String modelJson = objectMapper.writeValueAsString(preparingModel);
         MockHttpServletResponse response =
-                mockMvc.perform(post(SINGLE_PLAYER_ENDPOINT+"/random_battlefield")
-                        .contentType(MediaType.APPLICATION_JSON)
+                mockMvc.perform(post(MULTIPLAYER_ENDPOINT+"/random_battlefield")
+                                .contentType(MediaType.APPLICATION_JSON)
                                 .content(modelJson)
                                 .accept(MediaType.APPLICATION_JSON))
                         .andExpect(status().isOk())
@@ -67,13 +70,13 @@ class SinglePlayerControllerIT {
         assertNotNull(newModel.getEnemyModel());
         assertEquals(newModel.getPlayerModel().getPlayerName(), expectedName);
         assertEquals(newModel.getPlayerModel().getSizeOfShips(), 10);
-        assertEquals(newModel.getEnemyModel().getPlayerName(), "Bot");
+        assertEquals(newModel.getEnemyModel().getPlayerName(), "Unknown player");
         assertEquals(newModel.getActivePlayer(), newModel.getPlayerModel().getPlayerId());
 
         preparingModel.setPlayerId(newModel.getPlayerModel().getPlayerId());
         modelJson = objectMapper.writeValueAsString(preparingModel);
         response =
-                mockMvc.perform(post(SINGLE_PLAYER_ENDPOINT+"/random_battlefield")
+                mockMvc.perform(post(MULTIPLAYER_ENDPOINT+"/random_battlefield")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(modelJson)
                                 .accept(MediaType.APPLICATION_JSON))
@@ -94,12 +97,67 @@ class SinglePlayerControllerIT {
     }
 
     @Test
-    void shouldDeleteGameModelTest() throws Exception {
+    void shouldReturnFreeGamesList() throws Exception {
         String expectedName = "Name";
         PreparingModel preparingModel = new PreparingModel(null, expectedName);
         String modelJson = objectMapper.writeValueAsString(preparingModel);
         MockHttpServletResponse response =
-                mockMvc.perform(post(SINGLE_PLAYER_ENDPOINT+"/random_battlefield")
+                mockMvc.perform(post(MULTIPLAYER_ENDPOINT+"/random_battlefield")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(modelJson)
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse();
+        assertNotNull(response);
+        GameModelUI  gameModelUI = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
+        assertNotNull(gameModelUI);
+        assertNotNull(gameModelUI.getGameId());
+        assertNotNull(gameModelUI.getPlayerModel());
+        assertNotNull(gameModelUI.getPlayerModel().getPlayerName());
+
+        UUID withoutId = UUID.randomUUID();
+        response =
+                mockMvc.perform(get(MULTIPLAYER_ENDPOINT+"/free_games?withoutId="+withoutId)
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse();
+        assertNotNull(response);
+
+        List<FreeGame> freeGames = objectMapper.readValue(response.getContentAsString(), new TypeReference<>() {});
+        assertNotNull(freeGames);
+        assertTrue(freeGames.size() > 0);
+    }
+
+    @Test
+    void shouldJoinToMultiplayerGame() throws Exception {
+        PreparingModel preparingModel = new PreparingModel(null, "Player1");
+        String modelJson = objectMapper.writeValueAsString(preparingModel);
+        MockHttpServletResponse response =
+                mockMvc.perform(post(MULTIPLAYER_ENDPOINT+"/random_battlefield")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(modelJson)
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse();
+        assertNotNull(response);
+        GameModelUI  selectedModel = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
+
+        preparingModel = new PreparingModel(null, "Player2");
+        modelJson = objectMapper.writeValueAsString(preparingModel);
+        response =
+                mockMvc.perform(post(MULTIPLAYER_ENDPOINT+"/random_battlefield")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(modelJson)
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse();
+        assertNotNull(response);
+        GameModelUI  joinedModel = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
+
+        UUID gameId = selectedModel.getGameId();
+        modelJson = objectMapper.writeValueAsString(joinedModel);
+        response =
+                mockMvc.perform(post(MULTIPLAYER_ENDPOINT+"/game/"+gameId+"/join")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(modelJson)
                                 .accept(MediaType.APPLICATION_JSON))
@@ -107,14 +165,11 @@ class SinglePlayerControllerIT {
                         .andReturn().getResponse();
         assertNotNull(response);
 
-        GameModelUI model = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
-
-        UUID gameId = model.getGameId();
-        response =
-                mockMvc.perform(delete(SINGLE_PLAYER_ENDPOINT+"/game/"+gameId)
-                                .accept(MediaType.APPLICATION_JSON))
-                        .andExpect(status().isOk())
-                        .andReturn().getResponse();
-        assertNotNull(response);
+        GameModelUI result = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
+        assertNotNull(result);
+        assertEquals(selectedModel.getGameId(), result.getGameId());
+        assertEquals(selectedModel.getPlayerModel().getPlayerId(), result.getEnemyModel().getPlayerId());
+        assertEquals(joinedModel.getPlayerModel().getPlayerId(), result.getPlayerModel().getPlayerId());
+        assertEquals(result.getEnemyModel().getPlayerId(), result.getActivePlayer());
     }
 }

@@ -4,11 +4,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class Message {
+import java.util.UUID;
 
-    private String from;
-    private String text;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class FreeGame {
+    private UUID gameId;
+    private String playerName;
 }

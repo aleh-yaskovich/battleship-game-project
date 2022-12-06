@@ -12,7 +12,13 @@ public class CommonExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     @ResponseStatus(BAD_REQUEST)
-    public ExceptionInformation handlePatientResourceException(RuntimeException ex) {
+    public ExceptionInformation handleRuntimeException(RuntimeException ex) {
+        return new ExceptionInformation(BAD_REQUEST, BAD_REQUEST.value(), ex.getMessage());
+    }
+
+    @ExceptionHandler(GameModelException.class)
+    @ResponseStatus(BAD_REQUEST)
+    public ExceptionInformation handleGameModelException(GameModelException ex) {
         return new ExceptionInformation(BAD_REQUEST, BAD_REQUEST.value(), ex.getMessage());
     }
 }
