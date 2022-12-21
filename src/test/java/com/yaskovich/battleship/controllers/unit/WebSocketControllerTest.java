@@ -1,8 +1,8 @@
 package com.yaskovich.battleship.controllers.unit;
 
 import com.yaskovich.battleship.api.controllers.WebSocketController;
-import com.yaskovich.battleship.entity.InputMessage;
-import com.yaskovich.battleship.entity.OutputMessage;
+import com.yaskovich.battleship.entity.messages.InputMessage;
+import com.yaskovich.battleship.entity.messages.OutputMessage;
 import com.yaskovich.battleship.models.GameModel;
 import com.yaskovich.battleship.models.GameModelUI;
 import com.yaskovich.battleship.models.PlayerModel;

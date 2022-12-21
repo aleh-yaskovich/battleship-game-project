@@ -1,4 +1,4 @@
-package com.yaskovich.battleship.entity;
+package com.yaskovich.battleship.entity.messages;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

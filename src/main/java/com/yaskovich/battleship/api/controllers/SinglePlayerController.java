@@ -41,4 +41,10 @@ public class SinglePlayerController implements SinglePlayerControllerApi {
         service.deleteGameModelById(gameModelId);
         return new ResponseEntity<>(true, HttpStatus.OK);
     }
+
+    @Override
+    public ResponseEntity<Boolean> saveGame(UUID gameModelId) {
+        service.saveGame(gameModelId);
+        return new ResponseEntity<>(true, HttpStatus.OK);
+    }
 }

@@ -1,12 +1,14 @@
 package com.yaskovich.battleship.services;
 
 import com.yaskovich.battleship.entity.Ship;
+import com.yaskovich.battleship.entity.kafka.SavingGame;
 import com.yaskovich.battleship.exceptions.handler.GameModelException;
 import com.yaskovich.battleship.models.*;
 import org.slf4j.Logger;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -29,7 +31,10 @@ public class BattleShipService {
 
     private final Integer[] sizeOfShips = {4,3,3,2,2,2,1,1,1,1};
     private List<GameModel> gameModelList;
+    private Map<UUID, List<GameModelUI>> gameModelUIsForSaving;
     private static final Logger LOGGER = LoggerFactory.getLogger(BattleShipService.class);
+    @Autowired
+    private KafkaProducerService kafkaProducerService;
 
     /**
     * This method creates a new GameModel and adds it to the gameModelList,
@@ -108,6 +113,7 @@ public class BattleShipService {
             }
             gameModel.setPlayerModel(playerModel);
         }
+        saveGameModelUI(gameModel, activePlayer);
         return mapToGameModelUI(gameModel, activePlayer);
     }
 
@@ -135,6 +141,7 @@ public class BattleShipService {
             enemyModel.getBattleField()[shot] = 3;
             activePlayer = gameModel.getEnemyModel().getPlayerId();
         }
+        saveGameModelUI(gameModel, activePlayer);
         return mapToGameModelUI(gameModel, activePlayer);
     }
 
@@ -190,6 +197,7 @@ public class BattleShipService {
                 updatedPlayerModel.getBattleField()[shot] = 3;
                 activePlayer = updatedPlayerModel.getPlayerId();
             }
+            saveGameModelUI(gameModel, activePlayer);
             GameModelUI gameModelUI1 = mapToGameModelUI(
                     new GameModel(gameId, gameModel.getPlayerModel(), gameModel.getEnemyModel(), new ArrayList<>()),
                     activePlayer);
@@ -264,6 +272,20 @@ public class BattleShipService {
         return mapToGameModelUI(
                 new GameModel(gameModel.getGameId(), playerModel, enemyModel, new ArrayList<>()), activePlayer
         );
+    }
+
+    /**
+     * This method gets gameModelUIs from List for saving gameModelUIs, creates new SavingGame model
+     * and sends them to service for Kafka
+     **/
+    public void saveGame(UUID gameModelId) {
+        GameModel gameModel = getGameModelById(gameModelId);
+        List<GameModelUI> gameModelUIListForSaving = gameModelUIsForSaving.get(gameModelId);
+        kafkaProducerService.sendToKafkaGameModelUIs(gameModelUIListForSaving);
+        String annotation = gameModel.getPlayerModel().getPlayerName() + " vs "
+                + gameModel.getEnemyModel().getPlayerName();
+        deleteGameModelById(gameModelId);
+        kafkaProducerService.sendToKafkaSavingGame(new SavingGame(annotation, gameModelId));
     }
 
     /////////////////////////////////////////////////////////////////////////////
@@ -356,6 +378,43 @@ public class BattleShipService {
         }
         for(Integer point : ship.getSpaceAround()) {
             battleField[point] = 2;
+        }
+    }
+
+    /**
+     * This method converts a GameModel to a GameModelUI
+     * and adds this GameModelUI to List for saving gameModelUIs
+     **/
+    private void saveGameModelUI(GameModel gameModel, UUID activePlayer) {
+        int[] playerBattleField = new int[100];
+        int[] enemyBattleField = new int[100];
+        for(int i = 0; i < 100; i++) {
+            if(gameModel.getPlayerModel().getBattleField()[i] > 2) {
+                playerBattleField[i] = gameModel.getPlayerModel().getBattleField()[i];
+            }
+            if(gameModel.getEnemyModel().getBattleField()[i] > 2) {
+                enemyBattleField[i] = gameModel.getEnemyModel().getBattleField()[i];
+            }
+        }
+        PlayerModelUI playerModelUI = new PlayerModelUI(
+                gameModel.getPlayerModel().getPlayerId(),
+                gameModel.getPlayerModel().getPlayerName(),
+                gameModel.getPlayerModel().getShips().size(),
+                playerBattleField
+        );
+        PlayerModelUI enemyModelUI = new PlayerModelUI(
+                gameModel.getEnemyModel().getPlayerId(),
+                gameModel.getEnemyModel().getPlayerName(),
+                gameModel.getEnemyModel().getShips().size(),
+                enemyBattleField
+        );
+        GameModelUI gameModelUI = new GameModelUI(gameModel.getGameId(), playerModelUI, enemyModelUI, activePlayer);
+        if(gameModelUIsForSaving.containsKey(gameModel.getGameId())) {
+            gameModelUIsForSaving.get(gameModel.getGameId()).add(gameModelUI);
+        } else {
+            List<GameModelUI> newGameForSaving = new ArrayList<>();
+            newGameForSaving.add(gameModelUI);
+            gameModelUIsForSaving.put(gameModel.getGameId(), newGameForSaving);
         }
     }
 

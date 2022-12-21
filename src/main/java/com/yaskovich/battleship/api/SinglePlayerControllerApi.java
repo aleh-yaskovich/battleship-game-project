@@ -30,4 +30,7 @@ public interface SinglePlayerControllerApi {
     )
     @DeleteMapping("game/{gameModelId}")
     ResponseEntity<Boolean> deleteGameModel(@PathVariable UUID gameModelId);
+
+    @GetMapping("game/{gameModelId}/save")
+    ResponseEntity<Boolean> saveGame(@PathVariable UUID gameModelId);
 }
