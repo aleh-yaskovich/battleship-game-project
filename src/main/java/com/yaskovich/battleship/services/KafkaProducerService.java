@@ -1,7 +1,7 @@
 package com.yaskovich.battleship.services;
 
 import com.yaskovich.battleship.entity.kafka.SavingGame;
-import com.yaskovich.battleship.models.GameModel;
+import com.yaskovich.battleship.exceptions.KafkaProducerException;
 import com.yaskovich.battleship.models.GameModelUI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +28,10 @@ public class KafkaProducerService {
     @Autowired
     private KafkaTemplate<String, GameModelUI> kafkaTemplateForGameModels;
 
-    public boolean sendToKafkaSavingGame(SavingGame game) {
+    /**
+     * This method sends to Kafka server SavingGame with information about players names and gameId
+     **/
+    public void sendToKafkaSavingGame(SavingGame game) {
         ListenableFuture<SendResult<String, SavingGame>> future =
                 kafkaTemplateForGames.send(games, game);
 
@@ -42,11 +45,14 @@ public class KafkaProducerService {
             public void onFailure(Throwable ex) {
                 LOGGER.debug("Unable to send message=["
                         + game + "] due to : " + ex.getMessage());
+                throw new KafkaProducerException("Failed to send to Kafka server savingGame: " + game.toString());
             }
         });
-        return true;
     }
 
+    /**
+     * This method sends to Kafka server a list of models related to the same game
+     **/
     public void sendToKafkaGameModelUIs (List<GameModelUI>gameModelUIList) {
         for(GameModelUI gameModelUI : gameModelUIList) {
             ListenableFuture<SendResult<String, GameModelUI>> future =
@@ -58,9 +64,12 @@ public class KafkaProducerService {
                             "] with offset=[" + result.getRecordMetadata().offset() + "]");
                 }
                 @Override
-                public void onFailure(Throwable ex) {
+                public void onFailure(Throwable e) {
                     LOGGER.debug("Unable to send message=["
-                            + gameModelUI + "] due to : " + ex.getMessage());
+                            + gameModelUI + "] due to : " + e.getMessage());
+                    throw new KafkaProducerException(
+                            "Failed to send to Kafka server gameModelUI: " + gameModelUI.toString()
+                    );
                 }
             });
         }

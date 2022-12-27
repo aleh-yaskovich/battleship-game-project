@@ -1,11 +1,11 @@
 package com.yaskovich.battleship.api;
 
+import com.yaskovich.battleship.api.response.GameModelUIResponse;
 import com.yaskovich.battleship.models.FreeGame;
 import com.yaskovich.battleship.models.GameModelUI;
 import com.yaskovich.battleship.models.PreparingModel;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,14 +24,14 @@ public interface MultiplayerControllerApi {
             description = "Create a new GameModelUI or update an existing GameModelUI with random arranged ships"
     )
     @PostMapping("random_battlefield")
-    ResponseEntity<GameModelUI> getGameModelUI(@RequestBody PreparingModel preparingModel);
+    GameModelUIResponse getGameModelUI(@RequestBody PreparingModel preparingModel);
 
     @Operation(
             summary = "Get the List of free games",
             description = "Get the List of games in which another player is not defined"
     )
     @GetMapping("free_games")
-    ResponseEntity<List<FreeGame>> getFreeGames(@RequestParam UUID withoutId);
+    List<FreeGame> getFreeGames(@RequestParam UUID withoutId);
 
     @Operation(
             summary = "Join an another player to the selected free game",
@@ -39,6 +39,6 @@ public interface MultiplayerControllerApi {
                     "and return the updated GameModelUI to both players"
     )
     @PostMapping("game/{gameId}/join")
-    ResponseEntity<GameModelUI> joinToMultiplayerGame(
+    GameModelUIResponse joinToMultiplayerGame(
             @PathVariable UUID gameId, @RequestBody GameModelUI gameModelUI);
 }

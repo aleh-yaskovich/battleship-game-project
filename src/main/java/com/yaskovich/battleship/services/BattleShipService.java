@@ -2,7 +2,7 @@ package com.yaskovich.battleship.services;
 
 import com.yaskovich.battleship.entity.Ship;
 import com.yaskovich.battleship.entity.kafka.SavingGame;
-import com.yaskovich.battleship.exceptions.handler.GameModelException;
+import com.yaskovich.battleship.exceptions.GameModelException;
 import com.yaskovich.battleship.models.*;
 import org.slf4j.Logger;
 import lombok.AllArgsConstructor;
@@ -36,51 +36,7 @@ public class BattleShipService {
     @Autowired
     private KafkaProducerService kafkaProducerService;
 
-    /**
-    * This method creates a new GameModel and adds it to the gameModelList,
-    * or the method finds the existing GameModel, changes it and updates the gameModel list.
-    * Then the method converts the GameModel to GameModelUI and returns it
-    **/
-    public GameModelUI getGameModelUI(PreparingModel preparingModel, boolean isSinglePlayer) {
-        LOGGER.debug("getGameModelUI("+preparingModel+", "+isSinglePlayer+")");
-        if(preparingModel == null) {
-            LOGGER.debug("PreparingModel is null");
-            throw new GameModelException("PreparingModel is null");
-        }
-        if(preparingModel.getPlayerName() == null || preparingModel.getPlayerName().isBlank()) {
-            LOGGER.debug("PreparingModel.playerName is null or empty");
-            throw new GameModelException("Player's name in PreparingModel can not be null or empty. ");
-        }
-        PlayerModel enemyModel;
-        PlayerModel playerModel = getRandomArrangedShips();
-        playerModel.setPlayerName(preparingModel.getPlayerName());
-        if(preparingModel.getPlayerId() == null) { // Create new GameModel
-            playerModel.setPlayerId(UUID.randomUUID());
-            if(isSinglePlayer) {
-                enemyModel = getRandomArrangedShips();
-                enemyModel.setPlayerId(UUID.randomUUID());
-                enemyModel.setPlayerName("Bot");
-            } else {
-                enemyModel =
-                        new PlayerModel(null, "Unknown player", new ArrayList<>(), new int[100]);
-            }
-            GameModel gameModel = new GameModel(UUID.randomUUID(), playerModel, enemyModel, new ArrayList<>());
-            gameModelList.add(gameModel);
-            return mapToGameModelUI(gameModel, gameModel.getPlayerModel().getPlayerId());
-        } else { // Update existing GameModel
-            GameModel gameModel = gameModelList.stream()
-                    .filter(e -> e.getPlayerModel().getPlayerId().equals(preparingModel.getPlayerId()))
-                    .findFirst().orElse(null);
-            if(gameModel != null) {
-                playerModel.setPlayerId(preparingModel.getPlayerId());
-                gameModel.setPlayerModel(playerModel);
-                return mapToGameModelUI(gameModel, gameModel.getPlayerModel().getPlayerId());
-            } else {
-                LOGGER.debug("PlayerModel with ID "+ preparingModel.getPlayerId() +" not found");
-                throw new GameModelException("PlayerModel with ID "+ preparingModel.getPlayerId() +" not found");
-            }
-        }
-    }
+    //////////////////////////  PUBLIC METHODS FOR A SINGLE PLAYER GAME - BEGINNING //////////////////////////
 
     /**
      * This method makes a shot from the bot.
@@ -145,29 +101,9 @@ public class BattleShipService {
         return mapToGameModelUI(gameModel, activePlayer);
     }
 
-    /**
-     * When the another Player selects the game from the list of Multiplayer games, this method adds him to this GameModel
-     * 1. The method finds the GameModel that this Player selected and the GameModel that this player created
-     * 2. The method extracts the PlayerModel from the created GameModel and set it to the selected GameModel
-     * 3. The method deletes the created GameModel from the gameModelList
-     * 4. Then the method converts the GameModel to GameModelUI and returns it
-     **/
-    public GameModelUI joinToMultiplayerGame(UUID gameId, GameModelUI gameModelUI) {
-        LOGGER.debug("joinToMultiplayerGame("+gameId+", "+gameModelUI+")");
-        GameModel selectedGameModel = getGameModelById(gameId);
-        GameModel createdGameModel = gameModelList.stream()
-                .filter(e -> e.getGameId().equals(gameModelUI.getGameId()))
-                .findFirst().orElse(null);
-        if(createdGameModel != null) {
-            selectedGameModel.setEnemyModel(createdGameModel.getPlayerModel());
-            deleteGameModelById(createdGameModel.getGameId());
-            return mapToGameModelUIForMultiplayerGame(
-                    selectedGameModel, gameModelUI.getPlayerModel().getPlayerId());
-        } else {
-            throw new GameModelException("GameModel with ID "+gameId+" or/and GameModel with ID "
-                    +gameModelUI.getGameId()+" is null");
-        }
-    }
+    //////////////////////////  PUBLIC METHODS FOR A SINGLE PLAYER GAME - END //////////////////////////
+
+    //////////////////////////  PUBLIC METHODS FOR A MULTIPLAYER GAME - BEGINNING //////////////////////////
 
     /**
      * This method changes the GameModel, when the Player makes a shot in the MultiplayerGame
@@ -228,34 +164,32 @@ public class BattleShipService {
     }
 
     /**
-     * This method deletes the GameModel by its ID from the gameModelList
+     * When the another Player selects the game from the list of Multiplayer games, this method adds him to this GameModel
+     * 1. The method finds the GameModel that this Player selected and the GameModel that this player created
+     * 2. The method extracts the PlayerModel from the created GameModel and set it to the selected GameModel
+     * 3. The method deletes the created GameModel from the gameModelList
+     * 4. Then the method converts the GameModel to GameModelUI and returns it
      **/
-    public void deleteGameModelById(UUID gameModelId) {
-        LOGGER.debug("deleteGameModelById("+gameModelId+")");
-        gameModelList.stream()
-                .filter(e -> e.getGameId().equals(gameModelId))
-                .findFirst().ifPresent(gameModel -> gameModelList.remove(gameModel));
-    }
-
-    /**
-     * This method finds the GameModel by its ID from the gameModelList
-     **/
-    public GameModel getGameModelById(UUID gameId) {
-        LOGGER.debug("getGameModelById("+gameId+")");
-        GameModel gameModel = gameModelList.stream()
-                .filter(e -> e.getGameId().equals(gameId))
+    public GameModelUI joinToMultiplayerGame(UUID gameId, GameModelUI gameModelUI) {
+        LOGGER.debug("joinToMultiplayerGame("+gameId+", "+gameModelUI+")");
+        GameModel selectedGameModel = getGameModelById(gameId);
+        GameModel createdGameModel = gameModelList.stream()
+                .filter(e -> e.getGameId().equals(gameModelUI.getGameId()))
                 .findFirst().orElse(null);
-        if(gameModel != null) {
-            return gameModel;
+        if(createdGameModel != null) {
+            selectedGameModel.setEnemyModel(createdGameModel.getPlayerModel());
+            deleteGameModelById(createdGameModel.getGameId());
+            return mapToGameModelUIForMultiplayerGame(
+                    selectedGameModel, gameModelUI.getPlayerModel().getPlayerId());
         } else {
-            LOGGER.debug("GameModel with ID "+ gameId +" not found");
-            throw new GameModelException("GameModel with ID "+ gameId +" not found");
+            throw new GameModelException("GameModel with ID "+gameId+" or/and GameModel with ID "
+                    +gameModelUI.getGameId()+" is null");
         }
     }
 
     /**
-    * This method converts a GameModel to a GameModelUI
-    **/
+     * This method converts a GameModel to a GameModelUI
+     **/
     public GameModelUI mapToGameModelUIForMultiplayerGame(GameModel gameModel, UUID playerId) {
         LOGGER.debug("mapToGameModelUIForMultiplayerGame("+gameModel+", "+playerId+")");
         PlayerModel playerModel;
@@ -275,12 +209,114 @@ public class BattleShipService {
     }
 
     /**
+     * This method is used when one of the players in the multiplayer game leaves the game early.
+     * The method creates a GameModelUI that notifies the other player about the early end of the game
+     **/
+    public GameModelUI interruptGame(UUID gameId, UUID playerId) {
+        LOGGER.debug("interruptGame("+gameId+", "+playerId+")");
+        GameModel gameModel = getGameModelById(gameId);
+        GameModelUI gameModelUI = mapToGameModelUI(gameModel, playerId);
+        if(gameModelUI.getPlayerModel().getPlayerId().equals(playerId)) {
+            gameModelUI.getPlayerModel().setSizeOfShips(-1);
+        } else {
+            gameModelUI.getEnemyModel().setSizeOfShips(-1);
+        }
+        return gameModelUI;
+    }
+
+    //////////////////////////  PUBLIC METHODS FOR A MULTIPLAYER GAME - END //////////////////////////
+
+    //////////////////////////  UNIVERSAL PUBLIC METHODS (FOR SP & MP GAMES) - BEGINNING //////////////////////////
+
+    /**
+     * This method creates a new GameModel and adds it to the gameModelList,
+     * or the method finds the existing GameModel, changes it and updates the gameModel list.
+     * Then the method converts the GameModel to GameModelUI and returns it
+     **/
+    public GameModelUI getGameModelUI(PreparingModel preparingModel, boolean isSinglePlayer) {
+        LOGGER.debug("getGameModelUI("+preparingModel+", "+isSinglePlayer+")");
+        if(preparingModel == null) {
+            LOGGER.debug("PreparingModel is null");
+            throw new GameModelException("PreparingModel is null");
+        }
+        if(preparingModel.getPlayerName() == null || preparingModel.getPlayerName().isBlank()) {
+            LOGGER.debug("PreparingModel.playerName is null or empty");
+            throw new GameModelException("Player's name in PreparingModel can not be null or empty. ");
+        }
+        PlayerModel enemyModel;
+        PlayerModel playerModel = getRandomArrangedShips();
+        playerModel.setPlayerName(preparingModel.getPlayerName());
+        if(preparingModel.getPlayerId() == null) { // Create new GameModel
+            playerModel.setPlayerId(UUID.randomUUID());
+            if(isSinglePlayer) {
+                enemyModel = getRandomArrangedShips();
+                enemyModel.setPlayerId(UUID.randomUUID());
+                enemyModel.setPlayerName("Bot");
+            } else {
+                enemyModel =
+                        new PlayerModel(null, "Unknown player", new ArrayList<>(), new int[100]);
+            }
+            GameModel gameModel = new GameModel(UUID.randomUUID(), playerModel, enemyModel, new ArrayList<>());
+            gameModelList.add(gameModel);
+            return mapToGameModelUI(gameModel, gameModel.getPlayerModel().getPlayerId());
+        } else { // Update existing GameModel
+            GameModel gameModel = gameModelList.stream()
+                    .filter(e -> e.getPlayerModel().getPlayerId().equals(preparingModel.getPlayerId()))
+                    .findFirst().orElse(null);
+            if(gameModel != null) {
+                playerModel.setPlayerId(preparingModel.getPlayerId());
+                gameModel.setPlayerModel(playerModel);
+                return mapToGameModelUI(gameModel, gameModel.getPlayerModel().getPlayerId());
+            } else {
+                LOGGER.debug("PlayerModel with ID "+ preparingModel.getPlayerId() +" not found");
+                throw new GameModelException("PlayerModel with ID "+ preparingModel.getPlayerId() +" not found");
+            }
+        }
+    }
+
+    /**
+     * This method deletes the GameModel by its ID from the gameModelList
+     **/
+    public boolean deleteGameModelById(UUID gameModelId) {
+        LOGGER.debug("deleteGameModelById("+gameModelId+")");
+        gameModelList.stream()
+                .filter(e -> e.getGameId().equals(gameModelId))
+                .findFirst().ifPresent(gameModel -> gameModelList.remove(gameModel));
+        gameModelUIsForSaving.remove(gameModelId);
+        try {
+            getGameModelById(gameModelId);
+            return false;
+        } catch(GameModelException e) {
+            return true;
+        }
+    }
+
+    /**
+     * This method finds the GameModel by its ID from the gameModelList
+     **/
+    public GameModel getGameModelById(UUID gameId) {
+        LOGGER.debug("getGameModelById("+gameId+")");
+        GameModel gameModel = gameModelList.stream()
+                .filter(e -> e.getGameId().equals(gameId))
+                .findFirst().orElse(null);
+        if(gameModel != null) {
+            return gameModel;
+        } else {
+            LOGGER.debug("GameModel with ID "+ gameId +" not found");
+            throw new GameModelException("GameModel with ID "+ gameId +" not found");
+        }
+    }
+
+    /**
      * This method gets gameModelUIs from List for saving gameModelUIs, creates new SavingGame model
      * and sends them to service for Kafka
      **/
     public void saveGame(UUID gameModelId) {
         GameModel gameModel = getGameModelById(gameModelId);
         List<GameModelUI> gameModelUIListForSaving = gameModelUIsForSaving.get(gameModelId);
+        if(gameModelUIListForSaving == null || gameModelUIListForSaving.isEmpty()) {
+            throw new GameModelException("Any GameModelUIs with ID "+ gameModelId +" are not found");
+        }
         kafkaProducerService.sendToKafkaGameModelUIs(gameModelUIListForSaving);
         String annotation = gameModel.getPlayerModel().getPlayerName() + " vs "
                 + gameModel.getEnemyModel().getPlayerName();
@@ -288,7 +324,58 @@ public class BattleShipService {
         kafkaProducerService.sendToKafkaSavingGame(new SavingGame(annotation, gameModelId));
     }
 
-    /////////////////////////////////////////////////////////////////////////////
+    //////////////////////////  UNIVERSAL PUBLIC METHODS (FOR SP & MP GAMES) - END //////////////////////////
+
+    //////////////////////////  PRIVATE UTIL METHODS (BOT LOGIC) - BEGINNING //////////////////////////
+
+    /**
+     * This method returns the next shot, when the bot hit
+     **/
+    private int getNextHit(List<Integer> botLastHits, int[] battleField) {
+        LOGGER.debug("getNextHit("+botLastHits+", "+ Arrays.toString(battleField) +")");
+        if(botLastHits.size() == 1) {
+            int hit = botLastHits.get(0);
+            if((hit+1) < 100 && battleField[hit+1] < 3 && (hit+1)/10 == hit/10) {return (hit+1);}
+            if((hit+10) < 100 && battleField[hit+10] < 3) {return (hit+10);}
+            if((hit-1) >= 0 && battleField[hit-1] < 3 && (hit-1)/10 == hit/10) {return (hit-1);}
+            if((hit-10) >= 0 && battleField[hit-10] < 3) {return (hit-10);}
+        } else if(botLastHits.size() > 1) {
+            int firstHit = botLastHits.get(0);
+            int secondHit = botLastHits.get(1);
+            int lastHit = botLastHits.get(botLastHits.size()-1);
+            if(Math.abs(firstHit-secondHit) == 1) {
+                if((lastHit-1) >= 0 && (lastHit-1)/10 == lastHit/10 && battleField[lastHit-1] < 3) {return (lastHit-1);}
+                if((firstHit+1) < 100 && (firstHit+1)/10 == firstHit/10 && battleField[firstHit+1] < 3) {return (firstHit+1);}
+                if((lastHit+1) < 100 && (lastHit+1)/10 == lastHit/10 && battleField[lastHit+1] < 3) {return (lastHit+1);}
+                if((firstHit-1) >= 0 && (firstHit-1)/10 == firstHit/10 && battleField[firstHit-1] < 3) {return (firstHit-1);}
+            }
+            if(Math.abs(firstHit-secondHit) == 10) {
+                if ((lastHit - 10) >= 0 && battleField[lastHit - 10] < 3) {return (lastHit-10);}
+                if ((firstHit + 10) < 100 && battleField[firstHit + 10] < 3) {return (firstHit+10);}
+                if ((lastHit + 10) < 100 && battleField[lastHit + 10] < 3) {return (lastHit+10);}
+                if ((firstHit - 10) >= 0 && battleField[firstHit - 10] < 3) {return (firstHit-10);}
+            }
+        }
+        LOGGER.debug("Something went wrong when the Bot tried to make the next hit");
+        throw new GameModelException("Something went wrong when the Bot tried to make the next hit");
+    }
+
+    /**
+     * This method returns a random shot for the bot
+     **/
+    private int getRandomPoint(int[] battleField) {
+        LOGGER.debug("getRandomPoint("+ Arrays.toString(battleField) +")");
+        Random random = new Random();
+        int randomPoint = random.nextInt(100);
+        while(battleField[randomPoint] > 2) {
+            randomPoint = random.nextInt(100);
+        }
+        return randomPoint;
+    }
+
+    //////////////////////////  PRIVATE UTIL METHODS (BOT LOGIC) - END //////////////////////////
+
+    //////////////////////////  PRIVATE UTIL METHODS (CREATING A GAME MODEL) - BEGINNING //////////////////////////
 
     /**
      * This method creates the list of ships and places them around the battleField
@@ -381,113 +468,9 @@ public class BattleShipService {
         }
     }
 
-    /**
-     * This method converts a GameModel to a GameModelUI
-     * and adds this GameModelUI to List for saving gameModelUIs
-     **/
-    private void saveGameModelUI(GameModel gameModel, UUID activePlayer) {
-        int[] playerBattleField = new int[100];
-        int[] enemyBattleField = new int[100];
-        for(int i = 0; i < 100; i++) {
-            if(gameModel.getPlayerModel().getBattleField()[i] > 2) {
-                playerBattleField[i] = gameModel.getPlayerModel().getBattleField()[i];
-            }
-            if(gameModel.getEnemyModel().getBattleField()[i] > 2) {
-                enemyBattleField[i] = gameModel.getEnemyModel().getBattleField()[i];
-            }
-        }
-        PlayerModelUI playerModelUI = new PlayerModelUI(
-                gameModel.getPlayerModel().getPlayerId(),
-                gameModel.getPlayerModel().getPlayerName(),
-                gameModel.getPlayerModel().getShips().size(),
-                playerBattleField
-        );
-        PlayerModelUI enemyModelUI = new PlayerModelUI(
-                gameModel.getEnemyModel().getPlayerId(),
-                gameModel.getEnemyModel().getPlayerName(),
-                gameModel.getEnemyModel().getShips().size(),
-                enemyBattleField
-        );
-        GameModelUI gameModelUI = new GameModelUI(gameModel.getGameId(), playerModelUI, enemyModelUI, activePlayer);
-        if(gameModelUIsForSaving.containsKey(gameModel.getGameId())) {
-            gameModelUIsForSaving.get(gameModel.getGameId()).add(gameModelUI);
-        } else {
-            List<GameModelUI> newGameForSaving = new ArrayList<>();
-            newGameForSaving.add(gameModelUI);
-            gameModelUIsForSaving.put(gameModel.getGameId(), newGameForSaving);
-        }
-    }
+    //////////////////////////  PRIVATE UTIL METHODS (CREATING A GAME MODEL) - END //////////////////////////
 
-    /**
-     * This method converts a GameModel to a GameModelUI
-     **/
-    private GameModelUI mapToGameModelUI(GameModel gameModel, UUID activePlayer) {
-        LOGGER.debug("mapToGameModelUI("+gameModel+", "+activePlayer+")");
-        int[] enemyBattleField = new int[100];
-        for(int i = 0; i < 100; i++) {
-            if(gameModel.getEnemyModel().getBattleField()[i] > 2) {
-                enemyBattleField[i] = gameModel.getEnemyModel().getBattleField()[i];
-            }
-        }
-        PlayerModelUI playerModel = mapToPlayerModelUI(gameModel.getPlayerModel());
-        PlayerModelUI enemyModel = mapToPlayerModelUI(gameModel.getEnemyModel());
-        enemyModel.setBattleField(enemyBattleField);
-        return new GameModelUI(gameModel.getGameId(), playerModel, enemyModel, activePlayer);
-    }
-
-    /**
-     * This method converts a PlayerModel to a PlayerModelUI
-     **/
-    private PlayerModelUI mapToPlayerModelUI(PlayerModel model) {
-        LOGGER.debug("mapToPlayerModelUI("+model+")");
-        return new PlayerModelUI(
-                model.getPlayerId(), model.getPlayerName(), model.getShips().size(), model.getBattleField());
-    }
-
-    /**
-     * This method returns the next shot, when the bot hit
-     **/
-    private int getNextHit(List<Integer> botLastHits, int[] battleField) {
-        LOGGER.debug("getNextHit("+botLastHits+", "+ Arrays.toString(battleField) +")");
-        if(botLastHits.size() == 1) {
-            int hit = botLastHits.get(0);
-            if((hit+1) < 100 && battleField[hit+1] < 3 && (hit+1)/10 == hit/10) {return (hit+1);}
-            if((hit+10) < 100 && battleField[hit+10] < 3) {return (hit+10);}
-            if((hit-1) >= 0 && battleField[hit-1] < 3 && (hit-1)/10 == hit/10) {return (hit-1);}
-            if((hit-10) >= 0 && battleField[hit-10] < 3) {return (hit-10);}
-        } else if(botLastHits.size() > 1) {
-            int firstHit = botLastHits.get(0);
-            int secondHit = botLastHits.get(1);
-            int lastHit = botLastHits.get(botLastHits.size()-1);
-            if(Math.abs(firstHit-secondHit) == 1) {
-                if((lastHit-1) >= 0 && (lastHit-1)/10 == lastHit/10 && battleField[lastHit-1] < 3) {return (lastHit-1);}
-                if((firstHit+1) < 100 && (firstHit+1)/10 == firstHit/10 && battleField[firstHit+1] < 3) {return (firstHit+1);}
-                if((lastHit+1) < 100 && (lastHit+1)/10 == lastHit/10 && battleField[lastHit+1] < 3) {return (lastHit+1);}
-                if((firstHit-1) >= 0 && (firstHit-1)/10 == firstHit/10 && battleField[firstHit-1] < 3) {return (firstHit-1);}
-            }
-            if(Math.abs(firstHit-secondHit) == 10) {
-                if ((lastHit - 10) >= 0 && battleField[lastHit - 10] < 3) {return (lastHit-10);}
-                if ((firstHit + 10) < 100 && battleField[firstHit + 10] < 3) {return (firstHit+10);}
-                if ((lastHit + 10) < 100 && battleField[lastHit + 10] < 3) {return (lastHit+10);}
-                if ((firstHit - 10) >= 0 && battleField[firstHit - 10] < 3) {return (firstHit-10);}
-            }
-        }
-        LOGGER.debug("Something went wrong when the Bot tried to make the next hit");
-        throw new GameModelException("Something went wrong when the Bot tried to make the next hit");
-    }
-
-    /**
-     * This method returns a random shot for the bot
-     **/
-    private int getRandomPoint(int[] battleField) {
-        LOGGER.debug("getRandomPoint("+ Arrays.toString(battleField) +")");
-        Random random = new Random();
-        int randomPoint = random.nextInt(100);
-        while(battleField[randomPoint] > 2) {
-            randomPoint = random.nextInt(100);
-        }
-        return randomPoint;
-    }
+    //////////////////////////  PRIVATE UTIL METHODS (CHECK SHOTS DURING THE GAME) - BEGINNING //////////////////////////
 
     /**
      * This method marks the battleField, when the bot hit
@@ -537,4 +520,73 @@ public class BattleShipService {
             ships.remove(ship);
         }
     }
+
+    //////////////////////////  PRIVATE UTIL METHODS (CHECK SHOTS DURING THE GAME) - END //////////////////////////
+
+    //////////////////////////  PRIVATE UTIL METHODS FOR MAPPING - BEGINNING //////////////////////////
+
+    /**
+     * This method converts a GameModel to a GameModelUI
+     **/
+    private GameModelUI mapToGameModelUI(GameModel gameModel, UUID activePlayer) {
+        LOGGER.debug("mapToGameModelUI("+gameModel+", "+activePlayer+")");
+        int[] enemyBattleField = new int[100];
+        for(int i = 0; i < 100; i++) {
+            if(gameModel.getEnemyModel().getBattleField()[i] > 2) {
+                enemyBattleField[i] = gameModel.getEnemyModel().getBattleField()[i];
+            }
+        }
+        PlayerModelUI playerModel = mapToPlayerModelUI(gameModel.getPlayerModel());
+        PlayerModelUI enemyModel = mapToPlayerModelUI(gameModel.getEnemyModel());
+        enemyModel.setBattleField(enemyBattleField);
+        return new GameModelUI(gameModel.getGameId(), playerModel, enemyModel, activePlayer);
+    }
+
+    /**
+     * This method converts a PlayerModel to a PlayerModelUI
+     **/
+    private PlayerModelUI mapToPlayerModelUI(PlayerModel model) {
+        LOGGER.debug("mapToPlayerModelUI("+model+")");
+        return new PlayerModelUI(
+                model.getPlayerId(), model.getPlayerName(), model.getShips().size(), model.getBattleField());
+    }
+
+    /**
+     * This method converts a GameModel to a GameModelUI
+     * and adds this GameModelUI to List for saving gameModelUIs
+     **/
+    private void saveGameModelUI(GameModel gameModel, UUID activePlayer) {
+        int[] playerBattleField = new int[100];
+        int[] enemyBattleField = new int[100];
+        for(int i = 0; i < 100; i++) {
+            if(gameModel.getPlayerModel().getBattleField()[i] > 2) {
+                playerBattleField[i] = gameModel.getPlayerModel().getBattleField()[i];
+            }
+            if(gameModel.getEnemyModel().getBattleField()[i] > 2) {
+                enemyBattleField[i] = gameModel.getEnemyModel().getBattleField()[i];
+            }
+        }
+        PlayerModelUI playerModelUI = new PlayerModelUI(
+                gameModel.getPlayerModel().getPlayerId(),
+                gameModel.getPlayerModel().getPlayerName(),
+                gameModel.getPlayerModel().getShips().size(),
+                playerBattleField
+        );
+        PlayerModelUI enemyModelUI = new PlayerModelUI(
+                gameModel.getEnemyModel().getPlayerId(),
+                gameModel.getEnemyModel().getPlayerName(),
+                gameModel.getEnemyModel().getShips().size(),
+                enemyBattleField
+        );
+        GameModelUI gameModelUI = new GameModelUI(gameModel.getGameId(), playerModelUI, enemyModelUI, activePlayer);
+        if(gameModelUIsForSaving.containsKey(gameModel.getGameId())) {
+            gameModelUIsForSaving.get(gameModel.getGameId()).add(gameModelUI);
+        } else {
+            List<GameModelUI> newGameForSaving = new ArrayList<>();
+            newGameForSaving.add(gameModelUI);
+            gameModelUIsForSaving.put(gameModel.getGameId(), newGameForSaving);
+        }
+    }
+
+    //////////////////////////  PRIVATE UTIL METHODS FOR MAPPING - END //////////////////////////
 }

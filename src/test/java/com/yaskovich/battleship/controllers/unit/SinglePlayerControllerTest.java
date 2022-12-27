@@ -26,23 +26,23 @@ class SinglePlayerControllerTest {
     @Mock
     private BattleShipService service;
 
-    @Test
-    void shouldReturnGameModelUI() {
-        GameModelUI expected =
-                new GameModelUI(UUID.randomUUID(), new PlayerModelUI(), new PlayerModelUI(), UUID.randomUUID());
-        PreparingModel preparingModel = new PreparingModel();
-        when(service.getGameModelUI(preparingModel, true)).thenReturn(expected);
-        GameModelUI actual = controller.getGameModelUI(preparingModel).getBody();
-        verify(service).getGameModelUI(preparingModel, true);
-        assertNotNull(actual);
-        assertEquals(expected, actual);
-    }
+//    @Test
+//    void shouldReturnGameModelUI() {
+//        GameModelUI expected =
+//                new GameModelUI(UUID.randomUUID(), new PlayerModelUI(), new PlayerModelUI(), UUID.randomUUID());
+//        PreparingModel preparingModel = new PreparingModel();
+//        when(service.getGameModelUI(preparingModel, true)).thenReturn(expected);
+//        GameModelUI actual = controller.getGameModelUI(preparingModel).getBody();
+//        verify(service).getGameModelUI(preparingModel, true);
+//        assertNotNull(actual);
+//        assertEquals(expected, actual);
+//    }
 
-    @Test
-    void shouldDeleteGameModel() {
-        UUID gameModelId = UUID.randomUUID();
-        boolean res = Boolean.TRUE.equals(controller.deleteGameModel(gameModelId).getBody());
-        verify(service).deleteGameModelById(gameModelId);
-        assertTrue(res);
-    }
+//    @Test
+//    void shouldDeleteGameModel() {
+//        UUID gameModelId = UUID.randomUUID();
+//        boolean res = Boolean.TRUE.equals(controller.deleteGameModel(gameModelId).getBody());
+//        verify(service).deleteGameModelById(gameModelId);
+//        assertTrue(res);
+//    }
 }

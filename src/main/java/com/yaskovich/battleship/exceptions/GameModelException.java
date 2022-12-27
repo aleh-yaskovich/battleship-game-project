@@ -1,4 +1,4 @@
-package com.yaskovich.battleship.exceptions.handler;
+package com.yaskovich.battleship.exceptions;
 
 public class GameModelException extends RuntimeException{
 

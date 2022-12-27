@@ -1,6 +1,6 @@
 package com.yaskovich.battleship.services;
 
-import com.yaskovich.battleship.exceptions.handler.GameModelException;
+import com.yaskovich.battleship.exceptions.GameModelException;
 import com.yaskovich.battleship.models.FreeGame;
 import com.yaskovich.battleship.models.GameModel;
 import com.yaskovich.battleship.models.GameModelUI;
