@@ -2,7 +2,8 @@ package com.yaskovich.battleship.controllers.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yaskovich.battleship.api.controllers.SinglePlayerController;
-import com.yaskovich.battleship.models.GameModelUI;
+import com.yaskovich.battleship.api.response.BaseResponse;
+import com.yaskovich.battleship.api.response.GameModelUIResponse;
 import com.yaskovich.battleship.models.PreparingModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -61,16 +62,17 @@ class SinglePlayerControllerIT {
                         .andReturn().getResponse();
         assertNotNull(response);
 
-        GameModelUI newModel = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
-        assertNotNull(newModel);
-        assertNotNull(newModel.getPlayerModel());
-        assertNotNull(newModel.getEnemyModel());
-        assertEquals(newModel.getPlayerModel().getPlayerName(), expectedName);
-        assertEquals(newModel.getPlayerModel().getSizeOfShips(), 10);
-        assertEquals(newModel.getEnemyModel().getPlayerName(), "Bot");
-        assertEquals(newModel.getActivePlayer(), newModel.getPlayerModel().getPlayerId());
+        GameModelUIResponse actual = objectMapper.readValue(response.getContentAsString(), GameModelUIResponse.class);
+        assertNotNull(actual);
+        assertNotNull(actual.getStatus());
+        assertEquals(BaseResponse.Status.SUCCESS, actual.getStatus());
+        assertNotNull(actual.getGameModelUI());
+        assertEquals(expectedName, actual.getGameModelUI().getPlayerModel().getPlayerName());
+        assertEquals(10, actual.getGameModelUI().getPlayerModel().getSizeOfShips());
+        assertEquals("Bot", actual.getGameModelUI().getEnemyModel().getPlayerName());
+        assertEquals(actual.getGameModelUI().getActivePlayer(), actual.getGameModelUI().getPlayerModel().getPlayerId());
 
-        preparingModel.setPlayerId(newModel.getPlayerModel().getPlayerId());
+        preparingModel.setPlayerId(actual.getGameModelUI().getPlayerModel().getPlayerId());
         modelJson = objectMapper.writeValueAsString(preparingModel);
         response =
                 mockMvc.perform(post(SINGLE_PLAYER_ENDPOINT+"/random_battlefield")
@@ -81,16 +83,19 @@ class SinglePlayerControllerIT {
                         .andReturn().getResponse();
         assertNotNull(response);
 
-        GameModelUI changedModel = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
-        assertNotNull(changedModel);
-        assertNotNull(changedModel.getPlayerModel());
-        assertNotNull(changedModel.getEnemyModel());
+        GameModelUIResponse changed = objectMapper.readValue(response.getContentAsString(), GameModelUIResponse.class);
+        assertNotNull(changed);
+        assertNotNull(changed.getGameModelUI().getPlayerModel());
+        assertNotNull(changed.getGameModelUI().getEnemyModel());
 
-        assertEquals(newModel.getGameId(), changedModel.getGameId());
-        assertEquals(newModel.getEnemyModel(), changedModel.getEnemyModel());
-        assertEquals(newModel.getPlayerModel().getPlayerId(), changedModel.getPlayerModel().getPlayerId());
-        assertEquals(newModel.getPlayerModel().getPlayerName(), changedModel.getPlayerModel().getPlayerName());
-        assertNotEquals(newModel.getPlayerModel().getBattleField(), changedModel.getPlayerModel().getBattleField());
+        assertEquals(actual.getGameModelUI().getGameId(), changed.getGameModelUI().getGameId());
+        assertEquals(actual.getGameModelUI().getEnemyModel(), changed.getGameModelUI().getEnemyModel());
+        assertEquals(actual.getGameModelUI().getPlayerModel().getPlayerId(),
+                changed.getGameModelUI().getPlayerModel().getPlayerId());
+        assertEquals(actual.getGameModelUI().getPlayerModel().getPlayerName(),
+                changed.getGameModelUI().getPlayerModel().getPlayerName());
+        assertNotEquals(actual.getGameModelUI().getPlayerModel().getBattleField(),
+                changed.getGameModelUI().getPlayerModel().getBattleField());
     }
 
     @Test
@@ -107,14 +112,55 @@ class SinglePlayerControllerIT {
                         .andReturn().getResponse();
         assertNotNull(response);
 
-        GameModelUI model = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
+        GameModelUIResponse actual = objectMapper.readValue(response.getContentAsString(), GameModelUIResponse.class);
+        assertNotNull(actual);
+        assertNotNull(actual.getStatus());
+        assertEquals(BaseResponse.Status.SUCCESS, actual.getStatus());
+        assertNotNull(actual.getGameModelUI());
 
-        UUID gameId = model.getGameId();
+        UUID gameId = actual.getGameModelUI().getGameId();
         response =
-                mockMvc.perform(delete(SINGLE_PLAYER_ENDPOINT+"/game/"+gameId)
+                mockMvc.perform(get(SINGLE_PLAYER_ENDPOINT+"/game/"+gameId+"/delete")
                                 .accept(MediaType.APPLICATION_JSON))
                         .andExpect(status().isOk())
                         .andReturn().getResponse();
         assertNotNull(response);
+        BaseResponse res = objectMapper.readValue(response.getContentAsString(), BaseResponse.class);
+        assertNotNull(res);
+        assertNotNull(res.getStatus());
+        assertEquals(BaseResponse.Status.SUCCESS, res.getStatus());
+    }
+
+    @Test
+    void shouldSaveGameTest() throws Exception {
+        String expectedName = "Name";
+        PreparingModel preparingModel = new PreparingModel(null, expectedName);
+        String modelJson = objectMapper.writeValueAsString(preparingModel);
+        MockHttpServletResponse response =
+                mockMvc.perform(post(SINGLE_PLAYER_ENDPOINT+"/random_battlefield")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(modelJson)
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse();
+        assertNotNull(response);
+
+        GameModelUIResponse actual = objectMapper.readValue(response.getContentAsString(), GameModelUIResponse.class);
+        assertNotNull(actual);
+        assertNotNull(actual.getStatus());
+        assertEquals(BaseResponse.Status.SUCCESS, actual.getStatus());
+        assertNotNull(actual.getGameModelUI());
+
+        UUID gameId = actual.getGameModelUI().getGameId();
+        response =
+                mockMvc.perform(get(SINGLE_PLAYER_ENDPOINT+"/game/"+gameId+"/save")
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse();
+        assertNotNull(response);
+        BaseResponse res = objectMapper.readValue(response.getContentAsString(), BaseResponse.class);
+        assertNotNull(res);
+        assertNotNull(res.getStatus());
+        assertEquals(BaseResponse.Status.FAILURE, res.getStatus());
     }
 }

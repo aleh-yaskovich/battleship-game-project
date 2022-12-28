@@ -3,8 +3,9 @@ package com.yaskovich.battleship.controllers.integration;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yaskovich.battleship.api.controllers.MultiplayerController;
+import com.yaskovich.battleship.api.response.BaseResponse;
+import com.yaskovich.battleship.api.response.GameModelUIResponse;
 import com.yaskovich.battleship.models.FreeGame;
-import com.yaskovich.battleship.models.GameModelUI;
 import com.yaskovich.battleship.models.PreparingModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -64,16 +65,17 @@ class MultiplayerControllerIT {
                         .andReturn().getResponse();
         assertNotNull(response);
 
-        GameModelUI newModel = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
-        assertNotNull(newModel);
-        assertNotNull(newModel.getPlayerModel());
-        assertNotNull(newModel.getEnemyModel());
-        assertEquals(newModel.getPlayerModel().getPlayerName(), expectedName);
-        assertEquals(newModel.getPlayerModel().getSizeOfShips(), 10);
-        assertEquals(newModel.getEnemyModel().getPlayerName(), "Unknown player");
-        assertEquals(newModel.getActivePlayer(), newModel.getPlayerModel().getPlayerId());
+        GameModelUIResponse actual = objectMapper.readValue(response.getContentAsString(), GameModelUIResponse.class);
+        assertNotNull(actual);
+        assertNotNull(actual.getStatus());
+        assertEquals(BaseResponse.Status.SUCCESS, actual.getStatus());
+        assertNotNull(actual.getGameModelUI());
+        assertEquals(expectedName, actual.getGameModelUI().getPlayerModel().getPlayerName());
+        assertEquals(10, actual.getGameModelUI().getPlayerModel().getSizeOfShips());
+        assertEquals("Unknown player", actual.getGameModelUI().getEnemyModel().getPlayerName());
+        assertEquals(actual.getGameModelUI().getActivePlayer(), actual.getGameModelUI().getPlayerModel().getPlayerId());
 
-        preparingModel.setPlayerId(newModel.getPlayerModel().getPlayerId());
+        preparingModel.setPlayerId(actual.getGameModelUI().getPlayerModel().getPlayerId());
         modelJson = objectMapper.writeValueAsString(preparingModel);
         response =
                 mockMvc.perform(post(MULTIPLAYER_ENDPOINT+"/random_battlefield")
@@ -84,16 +86,19 @@ class MultiplayerControllerIT {
                         .andReturn().getResponse();
         assertNotNull(response);
 
-        GameModelUI changedModel = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
-        assertNotNull(changedModel);
-        assertNotNull(changedModel.getPlayerModel());
-        assertNotNull(changedModel.getEnemyModel());
+        GameModelUIResponse changed = objectMapper.readValue(response.getContentAsString(), GameModelUIResponse.class);
+        assertNotNull(changed);
+        assertNotNull(changed.getGameModelUI().getPlayerModel());
+        assertNotNull(changed.getGameModelUI().getEnemyModel());
 
-        assertEquals(newModel.getGameId(), changedModel.getGameId());
-        assertEquals(newModel.getEnemyModel(), changedModel.getEnemyModel());
-        assertEquals(newModel.getPlayerModel().getPlayerId(), changedModel.getPlayerModel().getPlayerId());
-        assertEquals(newModel.getPlayerModel().getPlayerName(), changedModel.getPlayerModel().getPlayerName());
-        assertNotEquals(newModel.getPlayerModel().getBattleField(), changedModel.getPlayerModel().getBattleField());
+        assertEquals(actual.getGameModelUI().getGameId(), changed.getGameModelUI().getGameId());
+        assertEquals(actual.getGameModelUI().getEnemyModel(), changed.getGameModelUI().getEnemyModel());
+        assertEquals(actual.getGameModelUI().getPlayerModel().getPlayerId(),
+                changed.getGameModelUI().getPlayerModel().getPlayerId());
+        assertEquals(actual.getGameModelUI().getPlayerModel().getPlayerName(),
+                changed.getGameModelUI().getPlayerModel().getPlayerName());
+        assertNotEquals(actual.getGameModelUI().getPlayerModel().getBattleField(),
+                changed.getGameModelUI().getPlayerModel().getBattleField());
     }
 
     @Test
@@ -109,11 +114,12 @@ class MultiplayerControllerIT {
                         .andExpect(status().isOk())
                         .andReturn().getResponse();
         assertNotNull(response);
-        GameModelUI  gameModelUI = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
-        assertNotNull(gameModelUI);
-        assertNotNull(gameModelUI.getGameId());
-        assertNotNull(gameModelUI.getPlayerModel());
-        assertNotNull(gameModelUI.getPlayerModel().getPlayerName());
+
+        GameModelUIResponse actual = objectMapper.readValue(response.getContentAsString(), GameModelUIResponse.class);
+        assertNotNull(actual);
+        assertNotNull(actual.getStatus());
+        assertEquals(BaseResponse.Status.SUCCESS, actual.getStatus());
+        assertNotNull(actual.getGameModelUI());
 
         UUID withoutId = UUID.randomUUID();
         response =
@@ -140,7 +146,11 @@ class MultiplayerControllerIT {
                         .andExpect(status().isOk())
                         .andReturn().getResponse();
         assertNotNull(response);
-        GameModelUI  selectedModel = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
+        GameModelUIResponse selected = objectMapper.readValue(response.getContentAsString(), GameModelUIResponse.class);
+        assertNotNull(selected);
+        assertNotNull(selected.getStatus());
+        assertEquals(BaseResponse.Status.SUCCESS, selected.getStatus());
+        assertNotNull(selected.getGameModelUI());
 
         preparingModel = new PreparingModel(null, "Player2");
         modelJson = objectMapper.writeValueAsString(preparingModel);
@@ -152,10 +162,14 @@ class MultiplayerControllerIT {
                         .andExpect(status().isOk())
                         .andReturn().getResponse();
         assertNotNull(response);
-        GameModelUI  joinedModel = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
+        GameModelUIResponse joined = objectMapper.readValue(response.getContentAsString(), GameModelUIResponse.class);
+        assertNotNull(joined);
+        assertNotNull(joined.getStatus());
+        assertEquals(BaseResponse.Status.SUCCESS, joined.getStatus());
+        assertNotNull(joined.getGameModelUI());
 
-        UUID gameId = selectedModel.getGameId();
-        modelJson = objectMapper.writeValueAsString(joinedModel);
+        UUID gameId = selected.getGameModelUI().getGameId();
+        modelJson = objectMapper.writeValueAsString(joined.getGameModelUI());
         response =
                 mockMvc.perform(post(MULTIPLAYER_ENDPOINT+"/game/"+gameId+"/join")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -165,11 +179,16 @@ class MultiplayerControllerIT {
                         .andReturn().getResponse();
         assertNotNull(response);
 
-        GameModelUI result = objectMapper.readValue(response.getContentAsString(), GameModelUI.class);
+        GameModelUIResponse result = objectMapper.readValue(response.getContentAsString(), GameModelUIResponse.class);
         assertNotNull(result);
-        assertEquals(selectedModel.getGameId(), result.getGameId());
-        assertEquals(selectedModel.getPlayerModel().getPlayerId(), result.getEnemyModel().getPlayerId());
-        assertEquals(joinedModel.getPlayerModel().getPlayerId(), result.getPlayerModel().getPlayerId());
-        assertEquals(result.getEnemyModel().getPlayerId(), result.getActivePlayer());
+        assertNotNull(result.getStatus());
+        assertEquals(BaseResponse.Status.SUCCESS, result.getStatus());
+        assertNotNull(result.getGameModelUI());
+        assertEquals(selected.getGameModelUI().getGameId(), result.getGameModelUI().getGameId());
+        assertEquals(selected.getGameModelUI().getPlayerModel().getPlayerId(),
+                result.getGameModelUI().getEnemyModel().getPlayerId());
+        assertEquals(joined.getGameModelUI().getPlayerModel().getPlayerId(),
+                result.getGameModelUI().getPlayerModel().getPlayerId());
+        assertEquals(result.getGameModelUI().getEnemyModel().getPlayerId(), result.getGameModelUI().getActivePlayer());
     }
 }
