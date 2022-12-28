@@ -1,6 +1,8 @@
 package com.yaskovich.battleship.controllers.unit;
 
 import com.yaskovich.battleship.api.controllers.MultiplayerController;
+import com.yaskovich.battleship.api.response.BaseResponse;
+import com.yaskovich.battleship.api.response.GameModelUIResponse;
 import com.yaskovich.battleship.models.FreeGame;
 import com.yaskovich.battleship.models.GameModelUI;
 import com.yaskovich.battleship.models.PlayerModelUI;
@@ -29,38 +31,42 @@ class MultiplayerControllerTest {
     @Mock
     private BattleShipService service;
 
-//    @Test
-//    void shouldReturnGameModelUI() {
-//        GameModelUI expected =
-//                new GameModelUI(UUID.randomUUID(), new PlayerModelUI(), new PlayerModelUI(), UUID.randomUUID());
-//        PreparingModel preparingModel = new PreparingModel();
-//        when(service.getGameModelUI(preparingModel, false)).thenReturn(expected);
-//        GameModelUI actual = controller.getGameModelUI(preparingModel).getBody();
-//        verify(service).getGameModelUI(preparingModel, false);
-//        assertNotNull(actual);
-//        assertEquals(expected, actual);
-//    }
+    @Test
+    void getGameModelUITest() {
+        GameModelUI expected =
+                new GameModelUI(UUID.randomUUID(), new PlayerModelUI(), new PlayerModelUI(), UUID.randomUUID());
+        PreparingModel preparingModel = new PreparingModel();
+        when(service.getGameModelUI(preparingModel, false)).thenReturn(expected);
+        GameModelUIResponse actual = controller.getGameModelUI(preparingModel);
+        verify(service).getGameModelUI(preparingModel, false);
+        assertNotNull(actual);
+        assertNotNull(actual.getGameModelUI());
+        assertEquals(BaseResponse.Status.SUCCESS, actual.getStatus());
+        assertEquals(expected, actual.getGameModelUI());
+    }
 
-//    @Test
-//    void shouldReturnFreeGameList() {
-//        List<FreeGame> expected = List.of(new FreeGame());
-//        UUID playerId = UUID.randomUUID();
-//        when(service.getFreeGames(playerId)).thenReturn(expected);
-//        List<FreeGame> actual = controller.getFreeGames(playerId).getBody();
-//        verify(service).getFreeGames(playerId);
-//        assertNotNull(actual);
-//        assertEquals(expected, actual);
-//    }
+    @Test
+    void getFreeGamesTest() {
+        List<FreeGame> expected = List.of(new FreeGame());
+        UUID playerId = UUID.randomUUID();
+        when(service.getFreeGames(playerId)).thenReturn(expected);
+        List<FreeGame> actual = controller.getFreeGames(playerId);
+        verify(service).getFreeGames(playerId);
+        assertNotNull(actual);
+        assertEquals(1, actual.size());
+        assertEquals(expected, actual);
+    }
 
-//    @Test
-//    void shouldJoinToMultiplayerGame() {
-//        UUID gameId = UUID.randomUUID();
-//        GameModelUI expected =
-//                new GameModelUI(UUID.randomUUID(), new PlayerModelUI(), new PlayerModelUI(), UUID.randomUUID());
-//        when(service.joinToMultiplayerGame(gameId, new GameModelUI())).thenReturn(expected);
-//        GameModelUI actual = controller.joinToMultiplayerGame(gameId, new GameModelUI()).getBody();
-//        verify(service).joinToMultiplayerGame(gameId, new GameModelUI());
-//        assertNotNull(actual);
-//        assertEquals(expected, actual);
-//    }
+    @Test
+    void joinToMultiplayerGameTest() {
+        UUID gameId = UUID.randomUUID();
+        GameModelUI expected =
+                new GameModelUI(UUID.randomUUID(), new PlayerModelUI(), new PlayerModelUI(), UUID.randomUUID());
+        when(service.joinToMultiplayerGame(gameId, new GameModelUI())).thenReturn(expected);
+        GameModelUIResponse actual = controller.joinToMultiplayerGame(gameId, new GameModelUI());
+        verify(service).joinToMultiplayerGame(gameId, new GameModelUI());
+        assertNotNull(actual);
+        assertNotNull(actual.getGameModelUI());
+        assertEquals(expected, actual.getGameModelUI());
+    }
 }

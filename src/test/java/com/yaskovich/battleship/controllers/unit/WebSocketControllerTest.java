@@ -8,6 +8,7 @@ import com.yaskovich.battleship.models.GameModelUI;
 import com.yaskovich.battleship.models.PlayerModel;
 import com.yaskovich.battleship.models.PlayerModelUI;
 import com.yaskovich.battleship.services.BattleShipService;
+import com.yaskovich.battleship.services.GameModelObjectMother;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,7 +35,7 @@ class WebSocketControllerTest {
     private SimpMessagingTemplate template;
 
     @Test
-    void shouldReturnGameModelUIWhenPlayerMakesShot() {
+    void getGameModelWhenPlayerMakesShotTest() {
         UUID gameId = UUID.randomUUID();
         int shot = 0;
         GameModelUI expected = new GameModelUI();
@@ -47,7 +48,7 @@ class WebSocketControllerTest {
     }
 
     @Test
-    void shouldReturnGameModelUIWhenBotMakesShot() {
+    void getGameModelWhenBotMakesShotTest() {
         UUID gameId = UUID.randomUUID();
         GameModelUI expected = new GameModelUI();
         expected.setGameId(UUID.randomUUID());
@@ -59,7 +60,7 @@ class WebSocketControllerTest {
     }
 
     @Test
-    void shouldUpdateGameModelUI() {
+    void updateGameModelUITest() {
         UUID gameId = UUID.randomUUID();
         PlayerModel playerModel = new PlayerModel(UUID.randomUUID(), "Name", new ArrayList<>(), new int[100]);
         GameModel gameModel = new GameModel(gameId, playerModel, playerModel, new ArrayList<>());
@@ -75,7 +76,7 @@ class WebSocketControllerTest {
     }
 
     @Test
-    void shouldMakeShotAndReturnGameModelUI() {
+    void makeShotAndReturnGameModelUITest() {
         PlayerModelUI playerModelUI = new PlayerModelUI();
         playerModelUI.setPlayerId(UUID.randomUUID());
         PlayerModelUI enemyModelUI = new PlayerModelUI();
@@ -101,7 +102,25 @@ class WebSocketControllerTest {
     }
 
     @Test
-    void shouldSendMessage() {
+    void interruptGameTest() {
+        GameModel gameModel = GameModelObjectMother.getGameModel();
+        UUID gameId = gameModel.getGameId();
+        UUID playerId = gameModel.getPlayerModel().getPlayerId();
+        UUID enemyId = gameModel.getEnemyModel().getPlayerId();
+        GameModelUI gameModelUI = new GameModelUI(gameId, new PlayerModelUI(), new PlayerModelUI(), enemyId);
+
+        when(service.getGameModelById(gameId)).thenReturn(gameModel);
+        when(service.interruptGame(gameId, playerId)).thenReturn(gameModelUI);
+
+        controller.interruptGame(gameId, playerId);
+        verify(service).getGameModelById(gameId);
+        verify(service).interruptGame(gameId, playerId);
+        verify(template).convertAndSend("/topic/game/"+gameId+"/player/"+enemyId+"/update", gameModelUI);
+        verify(service).deleteGameModelById(gameId);
+    }
+
+    @Test
+    void sendMessageTest() {
         String gameId = UUID.randomUUID().toString();
         UUID playerId = UUID.randomUUID();
         String playerName = "Name";
